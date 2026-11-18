@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F5F5FB">
+<meta name="description" content="MedCare: lembretes de medicamentos, agenda de consultas, diário de sintomas e resumo para o médico. Projeto FMU, ODS 3.">
+<title>MedCare: um novo jeito de cuidar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* =========================================================
+   1. TOKENS DE DESIGN
+   ========================================================= */
+:root{
+  --bg:#F5F5FB; --surface:#FFFFFF; --surface-2:#EEEEF7; --ink:#1C1B3A; --muted:#5E5F80; --line:#E0E0EE;
+  --primary:#5249D8; --primary-ink:#4038C2; --primary-soft:#ECEBFC; --on-primary:#FFFFFF;
+  --ok:#0B8468; --ok-soft:#DDF3EC; --bad:#C8423A; --bad-soft:#FBE6E3; --warn:#A35F00; --warn-soft:#FBEED7;
+  --focus:#2F63E0; --shadow:0 1px 2px rgba(28,27,58,.05),0 8px 24px rgba(28,27,58,.06);
+  --header-bg:rgba(245,245,251,.88);
+  --font:"Lexend",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111020; --surface:#1A1930; --surface-2:#24233D; --ink:#ECEBF8; --muted:#A4A3C4; --line:#302F4C;
+    --primary:#9D96FF; --primary-ink:#B7B2FF; --primary-soft:#2A2752; --on-primary:#15132E;
+    --ok:#4FD1A8; --ok-soft:#123329; --bad:#FF8A80; --bad-soft:#3A1C1E; --warn:#F3B95A; --warn-soft:#382A12;
+    --focus:#8FB0FF; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 26px rgba(0,0,0,.3);
+    --header-bg:rgba(17,16,32,.86);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111020; --surface:#1A1930; --surface-2:#24233D; --ink:#ECEBF8; --muted:#A4A3C4; --line:#302F4C;
+  --primary:#9D96FF; --primary-ink:#B7B2FF; --primary-soft:#2A2752; --on-primary:#15132E;
+  --ok:#4FD1A8; --ok-soft:#123329; --bad:#FF8A80; --bad-soft:#3A1C1E; --warn:#F3B95A; --warn-soft:#382A12;
+  --focus:#8FB0FF; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 26px rgba(0,0,0,.3);
+  --header-bg:rgba(17,16,32,.86);
+  color-scheme:dark;
+}
+
+/* =========================================================
+   2. BASE
+   ========================================================= */
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;
+  font-weight:400;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--header-bg);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:8px}
+h1,h2,h3{margin:0;line-height:1.15;font-weight:600;letter-spacing:-.01em}
+.icon{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.muted{color:var(--muted)}
+
+/* =========================================================
+   3. CABEÇALHO E NAVEGAÇÃO
+   ========================================================= */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--header-bg);backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1080px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;margin-right:auto}
+.brand-mark{width:38px;height:38px;border-radius:12px;background:var(--primary);color:var(--on-primary);display:grid;place-items:center}
+.brand b{display:block;font-size:1.22rem;font-weight:700;letter-spacing:-.02em;line-height:1}
+.brand small{display:block;color:var(--muted);font-size:.74rem;margin-top:3px}
+.pill-btn{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;
+  padding:7px 12px 7px 9px;cursor:pointer;font-size:.86rem}
+.pill-btn:hover{border-color:var(--muted)}
+.pill-btn .icon{width:19px;height:19px}
+.pill-btn.on{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+@media (max-width:560px){.pill-btn span{display:none}.pill-btn{padding:8px}.brand small{display:none}}
+
+main{max-width:1080px;margin:0 auto;padding:20px 18px calc(108px + env(safe-area-inset-bottom,0px))}
+
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar-inner{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px 10px;text-decoration:none;color:var(--muted);font-size:.74rem}
+.tab .tab-ic{width:52px;height:30px;border-radius:999px;display:grid;place-items:center}
+.tab[aria-current="page"]{color:var(--primary-ink);font-weight:600}
+.tab[aria-current="page"] .tab-ic{background:var(--primary-soft)}
+
+/* =========================================================
+   4. COMPONENTES
+   ========================================================= */
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.page-head h1{font-size:1.9rem}
+.page-head p{margin:4px 0 0;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px}
+.card h2{font-size:1.12rem;margin-bottom:12px}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.card-head h2{margin:0}
+.stack{display:grid;gap:16px}
+.cols{display:grid;gap:16px}
+@media (min-width:900px){.cols{grid-template-columns:1.45fr 1fr;align-items:start}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid var(--line);background:var(--surface);
+  border-radius:12px;padding:10px 15px;cursor:pointer;text-decoration:none;font-weight:500;font-size:.95rem;line-height:1.2}
+.btn:hover{border-color:var(--muted)}
+.btn .icon{width:19px;height:19px}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn-primary:hover{border-color:var(--primary);filter:brightness(1.07)}
+.btn-ok{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn-ghost:hover{background:var(--surface-2);border-color:transparent}
+.btn-danger{color:var(--bad)}
+.btn-sm{padding:7px 11px;font-size:.86rem;border-radius:10px}
+.btn-block{width:100%}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:14px;padding:4px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:500;color:var(--muted);font-size:.92rem}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:.88rem}
+.chip[aria-pressed="true"]{background:var(--primary-soft);border-color:var(--primary);color:var(--primary-ink);font-weight:500}
+.tag{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;font-size:.8rem;font-weight:500;white-space:nowrap}
+.tag-ok{background:var(--ok-soft);color:var(--ok)}
+.tag-bad{background:var(--bad-soft);color:var(--bad)}
+.tag-warn{background:var(--warn-soft);color:var(--warn)}
+.tag-info{background:var(--primary-soft);color:var(--primary-ink)}
+.tag-mute{background:var(--surface-2);color:var(--muted)}
+.pill{width:14px;height:26px;border-radius:7px;background:var(--pill,#5249D8);flex:none;position:relative;overflow:hidden}
+.pill::after{content:"";position:absolute;left:0;right:0;top:50%;height:50%;background:rgba(255,255,255,.55)}
+.empty{text-align:center;padding:26px 16px;color:var(--muted);border:1.5px dashed var(--line);border-radius:16px}
+.empty b{display:block;color:var(--ink);font-weight:600;margin-bottom:4px}
+.empty .btn{margin-top:12px}
+
+/* ---------- Campos ---------- */
+.form{display:grid;gap:14px}
+.field label,.field .lbl{display:block;font-weight:500;font-size:.92rem;margin-bottom:6px}
+.field small{display:block;color:var(--muted);font-size:.82rem;margin-top:5px}
+.field input,.field select,.field textarea{width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 12px;font-size:1rem}
+.field textarea{min-height:84px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 22%,transparent)}
+.field .err{color:var(--bad);font-size:.84rem;margin-top:5px;display:none}
+.field.invalid input,.field.invalid select,.field.invalid textarea{border-color:var(--bad)}
+.field.invalid .err{display:block}
+.row{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.row3{display:grid;gap:12px;grid-template-columns:1fr 1fr 1fr}
+@media (max-width:480px){.row3{grid-template-columns:1fr 1fr}}
+.times{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.time-item{display:flex;align-items:center;gap:2px;background:var(--surface-2);border-radius:12px;padding:3px 3px 3px 6px}
+.time-item input{border:0;background:transparent;padding:6px;width:auto;font-size:1rem}
+.time-item button{border:0;background:transparent;cursor:pointer;color:var(--muted);padding:6px;border-radius:8px;display:grid}
+.colors{display:flex;gap:10px;flex-wrap:wrap}
+.colors label{cursor:pointer}
+.colors input{position:absolute;opacity:0}
+.colors span{display:block;width:34px;height:34px;border-radius:50%;background:var(--c);border:3px solid var(--surface);box-shadow:0 0 0 1.5px var(--line)}
+.colors input:checked+span{box-shadow:0 0 0 3px var(--ink)}
+.colors input:focus-visible+span{outline:3px solid var(--focus);outline-offset:3px}
+.faces{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.face{border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font-size:.9rem}
+.face svg{width:34px;height:34px}
+.face[aria-pressed="true"]{border-color:var(--fc);background:var(--fcs);color:var(--fc);font-weight:600}
+
+/* =========================================================
+   5. HOJE
+   ========================================================= */
+.greet{margin-bottom:16px}
+.greet h1{font-size:1.85rem}
+.greet p{margin:4px 0 0;color:var(--muted);text-transform:none}
+.hero{position:relative;overflow:hidden;background:var(--primary);color:var(--on-primary);border-radius:26px;padding:22px 22px 20px}
+.hero-deco{position:absolute;right:-30px;top:-34px;width:190px;height:190px;opacity:.18;transform:rotate(-35deg);pointer-events:none}
+.hero-kicker{display:inline-flex;align-items:center;gap:7px;font-size:.92rem;background:rgba(255,255,255,.18);border-radius:999px;padding:4px 11px}
+.hero-kicker.late{background:#FFE1DC;color:#9D2A22}
+.hero-time{font-size:4.6rem;font-weight:300;line-height:1;letter-spacing:-.04em;margin:14px 0 8px}
+.hero-med{display:flex;align-items:center;gap:12px;font-size:1.05rem}
+.hero-med b{font-weight:600}
+.hero-med .pill{box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+.hero-note{opacity:.88;font-size:.92rem;margin-top:6px}
+.hero-act{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;position:relative}
+.hero-act .btn{border:0;padding:12px 18px;font-size:1rem}
+.hero-act .b-take{background:var(--on-primary);color:var(--primary)}
+.hero-act .b-skip{background:rgba(255,255,255,.18);color:var(--on-primary)}
+.hero.calm{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.hero.calm .hero-kicker{background:var(--ok-soft);color:var(--ok)}
+.hero.calm .hero-time{font-size:2rem;font-weight:500;letter-spacing:-.02em}
+
+.timeline{list-style:none;margin:0;padding:0}
+.dose{display:grid;grid-template-columns:58px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.dose:first-child{border-top:0;padding-top:2px}
+.dose-time{font-size:1.15rem;font-weight:500;padding-top:2px}
+.dose-time.past{color:var(--muted)}
+.dose-main{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.dose-info{flex:1;min-width:150px;display:flex;gap:10px}
+.dose-info b{display:block;font-weight:600}
+.dose-info span{display:block;color:var(--muted);font-size:.88rem}
+.dose-act{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end;height:118px;margin-top:6px}
+.wcol{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+.wbar{flex:1;width:100%;max-width:30px;border-radius:9px;background:var(--surface-2);position:relative;overflow:hidden}
+.wbar i{position:absolute;left:0;right:0;bottom:0;background:var(--ok);border-radius:9px}
+.wbar.none{background:repeating-linear-gradient(-45deg,var(--surface-2) 0 5px,transparent 5px 9px);border:1px solid var(--line)}
+.wcol small{font-size:.75rem;color:var(--muted)}
+.wcol.today small{color:var(--ink);font-weight:600}
+.big-stat{font-size:2.2rem;font-weight:300;letter-spacing:-.03em;line-height:1}
+
+.appt{display:flex;gap:14px;align-items:center;text-decoration:none}
+.appt-date{width:58px;flex:none;border-radius:14px;background:var(--primary-soft);color:var(--primary-ink);text-align:center;padding:7px 0}
+.appt-date b{display:block;font-size:1.5rem;font-weight:600;line-height:1}
+.appt-date small{font-size:.74rem}
+.appt-info b{display:block;font-weight:600}
+.appt-info span{display:block;font-size:.88rem;color:var(--muted)}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quick button{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;border:1px solid var(--line);background:var(--surface);
+  border-radius:16px;padding:14px;cursor:pointer;font-weight:500}
+.quick button:hover{border-color:var(--muted)}
+.quick .icon{color:var(--primary-ink)}
+
+/* =========================================================
+   6. REMÉDIOS, AGENDA, DIÁRIO, RESUMO
+   ========================================================= */
+.meds{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+.med{display:flex;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.med .pill{width:16px;height:32px;border-radius:8px}
+.med-body{flex:1;min-width:0}
+.med-body h3{font-size:1.1rem}
+.med-body p{margin:3px 0 0;color:var(--muted);font-size:.9rem}
+.med-times{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 6px}
+.med-foot{display:flex;gap:6px;margin-top:10px}
+.hist-day{margin-bottom:14px}
+.hist-day h3{font-size:.95rem;color:var(--muted);font-weight:500;margin-bottom:6px}
+.hist-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.hist-row:first-of-type{border-top:0}
+.hist-row .t{font-weight:500;width:48px}
+.hist-row .n{flex:1;min-width:140px}
+
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-head h2{margin:0;text-transform:capitalize}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .dow{font-size:.78rem;color:var(--muted);padding:4px 0}
+.cal button{aspect-ratio:1;border:0;background:transparent;border-radius:12px;cursor:pointer;position:relative;font-size:.95rem;display:grid;place-items:center}
+.cal button:hover{background:var(--surface-2)}
+.cal button.today{font-weight:700;color:var(--primary-ink)}
+.cal button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary);font-weight:600}
+.cal button .dot{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:var(--primary)}
+.cal button[aria-pressed="true"] .dot{background:var(--on-primary)}
+.appt-list{display:grid;gap:10px}
+.appt-item{display:flex;gap:14px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;cursor:pointer}
+.appt-item:hover{border-color:var(--muted)}
+.appt-item .appt-info{flex:1}
+
+.entries{display:grid;gap:10px}
+.entry{display:flex;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.entry-face{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--fcs);color:var(--fc)}
+.entry-face svg{width:28px;height:28px}
+.entry-body{flex:1;min-width:0}
+.entry-body b{font-weight:600}
+.entry-meta{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.entry-body p{margin:4px 0 0;color:var(--muted);font-size:.92rem}
+.i1{--fc:var(--ok);--fcs:var(--ok-soft)}
+.i2{--fc:var(--warn);--fcs:var(--warn-soft)}
+.i3{--fc:var(--bad);--fcs:var(--bad-soft)}
+
+.checklist{list-style:none;margin:0;padding:0}
+.checklist li{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.checklist li:first-child{border-top:0}
+.checklist input[type=checkbox]{width:21px;height:21px;accent-color:var(--primary);flex:none}
+.checklist label{flex:1;cursor:pointer}
+.checklist li.done label{color:var(--muted);text-decoration:line-through}
+.add-row{display:flex;gap:8px;margin-top:10px}
+.add-row input{flex:1;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 16px}
+.stat small{display:block;color:var(--muted);font-size:.84rem}
+.stat b{display:block;font-size:2rem;font-weight:300;letter-spacing:-.03em;line-height:1.15}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:.84rem}
+.bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;background:var(--ok)}
+.notice{display:flex;gap:10px;align-items:flex-start;background:var(--surface-2);border-radius:14px;padding:12px 14px;font-size:.88rem;color:var(--muted)}
+.notice .icon{width:19px;height:19px;color:var(--primary-ink);margin-top:2px}
+.footer-note{margin-top:28px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:.84rem;max-width:72ch}
+
+/* =========================================================
+   7. DIÁLOGOS, ALARME E AVISOS
+   ========================================================= */
+dialog{border:0;padding:0;background:transparent;color:var(--ink);max-width:min(560px,100vw);width:100%;max-height:100%}
+dialog::backdrop{background:rgba(14,13,30,.55);backdrop-filter:blur(2px)}
+.sheet{background:var(--surface);border-radius:24px;padding:20px;max-height:calc(100dvh - 40px);overflow:auto;box-shadow:var(--shadow)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.sheet-head h2{font-size:1.3rem}
+.icon-btn{width:40px;height:40px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer}
+.sheet-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+@media (max-width:600px){
+  dialog.bottom{margin:auto 0 0;max-width:100vw}
+  dialog.bottom .sheet{border-radius:24px 24px 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));max-height:92dvh}
+}
+.alarm{text-align:center;padding:26px 22px}
+.alarm .ring{width:76px;height:76px;margin:0 auto 12px;border-radius:50%;background:var(--primary-soft);color:var(--primary-ink);display:grid;place-items:center;position:relative}
+.alarm .ring::before{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--primary);opacity:.5;animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.92);opacity:.7}100%{transform:scale(1.3);opacity:0}}
+.alarm .ring .icon{width:36px;height:36px}
+.alarm h2{font-size:1.15rem;color:var(--muted);font-weight:500}
+.alarm .hero-time{color:var(--ink);font-size:3.4rem;margin:8px 0}
+.alarm .med-line{display:flex;align-items:center;justify-content:center;gap:10px;font-size:1.1rem}
+.alarm .sheet-foot{justify-content:center}
+.toast-zone{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;display:grid;gap:8px;width:min(92vw,460px)}
+.toast{background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:14px;font-size:.92rem;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center}
+.toast .icon{width:19px;height:19px;flex:none}
+@media (prefers-reduced-motion:reduce){.alarm .ring::before{animation:none}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#hoje" aria-label="MedCare, página inicial">
+      <span class="brand-mark"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.6a5 5 0 0 0-8.8-3.2A5 5 0 0 0 3.2 8.6c0 5 8.8 11 8.8 11s8.8-6 8.8-11Z"/><path d="M6 11.5h3l1.5-2.5 2.5 5 1.5-2.5H18"/></svg></span>
+      <span><b>MedCare</b><small>Um novo jeito de cuidar</small></span>
+    </a>
+    <button class="pill-btn" id="notifBtn" type="button"></button>
+    <button class="pill-btn" id="themeBtn" type="button"></button>
+  </div>
+</header>
+
+<main id="app" tabindex="-1"></main>
+
+<nav class="tabbar" aria-label="Navegação principal"><div class="tabbar-inner" id="tabbar"></div></nav>
+
+<dialog id="sheet" class="bottom" aria-labelledby="sheetTitle"><div class="sheet" id="sheetBody"></div></dialog>
+<dialog id="alarm" aria-labelledby="alarmTitle"><div class="sheet alarm" id="alarmBody"></div></dialog>
+<div class="toast-zone" id="toasts" role="status" aria-live="polite"></div>
+
+<script>
+/* =========================================================
+   A. ÍCONES
+   ========================================================= */
+const IC = {
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>',
+  auto:'<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  belloff:'<path d="M8.7 3A6 6 0 0 1 18 8a21 21 0 0 0 .6 5M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-1.7"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0M2 2l20 20"/>',
+  home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/>',
+  capsule:'<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+  cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  book:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M9 7h6M9 11h4"/>',
+  clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  chevL:'<path d="M15 18 9 12l6-6"/>',
+  chevR:'<path d="m9 18 6-6-6-6"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  steth:'<path d="M5 3v6a5 5 0 0 0 10 0V3"/><path d="M10 14v2a5 5 0 0 0 10 0v-3"/><circle cx="20" cy="11" r="2"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
+  pdf:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 15h6M9 18h4"/>',
+  download:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+  upload:'<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  ext:'<path d="M15 3h6v6M10 14 21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>'
+};
+const icon = (n, cls="") => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
+const FACES = {
+  1:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/></svg>',
+  2:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 15h7M9 9.5h.01M15 9.5h.01"/></svg>',
+  3:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 16a4.5 4.5 0 0 1 7 0M8.5 9l1.5 1M15.5 9 14 10"/></svg>'
+};
+
+/* =========================================================
+   B. UTILITÁRIOS DE DATA E TEXTO
+   ========================================================= */
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const hojeStr = () => ymd(new Date());
+const addDias = (s,n) => { const d = parseYmd(s); d.setDate(d.getDate()+n); return ymd(d); };
+const toMin = h => { const [a,b] = h.split(":").map(Number); return a*60+b; };
+const agoraMin = () => { const d = new Date(); return d.getHours()*60 + d.getMinutes(); };
+const horaAgora = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const DOW = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const fmtData = s => { const [y,m,d] = s.split("-"); return `${d}/${m}/${y}`; };
+const fmtLonga = s => parseYmd(s).toLocaleDateString("pt-BR",{weekday:"long", day:"numeric", month:"long"});
+const fmtCurta = s => { const d = parseYmd(s); return `${d.getDate()} de ${MESES[d.getMonth()]}`; };
+const num = n => String(n).replace(".", ",");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+
+/* =========================================================
+   C. BASE DE DADOS LOCAL
+   Tudo fica no aparelho (localStorage). Estrutura equivalente às
+   tabelas: medicamentos, registros_dose, consultas, diario,
+   perguntas e checklist. Ver o esquema SQL na documentação.
+   ========================================================= */
+const CHECKLIST_PADRAO = ["Lista de medicamentos em uso","Exames e laudos anteriores","Documento com foto e cartão do SUS ou do convênio","Receitas anteriores","Perguntas para o médico"];
+const vazio = () => ({ meds:[], registros:{}, consultas:[], diario:[], perguntas:[],
+  checklist: CHECKLIST_PADRAO.map(t => ({id:uid(), texto:t, ok:false})), perfil:{nome:""} });
+function carregar(){
+  try{ const v = JSON.parse(localStorage.getItem("mc:dados")); if (v && Array.isArray(v.meds)) return Object.assign(vazio(), v); }catch(e){}
+  return vazio();
+}
+let D = carregar();
+function salvar(){
+  try{ localStorage.setItem("mc:dados", JSON.stringify(D)); }
+  catch(e){ toast("Não foi possível salvar: o navegador bloqueou o armazenamento.", "x"); }
+}
+const pref = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------- Regras de medicamentos ---------- */
+const FORMAS = {comprimido:["comprimido","comprimidos"], capsula:["cápsula","cápsulas"], gota:["gota","gotas"], ml:["mL","mL"],
+  aplicacao:["aplicação","aplicações"], sache:["sachê","sachês"], inalacao:["inalação","inalações"], colher:["colher","colheres"]};
+const UNIDADES = ["mg","mcg","g","mL","UI","gotas","%"];
+const CORES = ["#5249D8","#0B8468","#D9480F","#C2185B","#1E6FD9","#8A6D00"];
+const FREQ = {diario:"Todos os dias", dias:"Dias específicos", sos:"Quando necessário"};
+
+const doseTxt = m => `${num(m.dose)} ${m.unidade}, ${num(m.qtd)} ${FORMAS[m.forma][m.qtd > 1 ? 1 : 0]}`;
+const freqTxt = m => m.freq === "dias" ? m.dias.slice().sort().map(d => DOW[d]).join(", ") : FREQ[m.freq];
+const medPorId = id => D.meds.find(m => m.id === id);
+function medAtivoEm(m, dia){
+  if (m.freq === "sos") return false;
+  if (m.inicio && dia < m.inicio) return false;
+  if (m.fim && dia > m.fim) return false;
+  return m.freq === "diario" || (m.dias || []).includes(parseYmd(dia).getDay());
+}
+function dosesDoDia(dia){
+  return D.meds.filter(m => medAtivoEm(m, dia))
+    .flatMap(m => m.horarios.map(h => { const k = `${m.id}|${dia}|${h}`; return {m, hora:h, dia, chave:k, reg:D.registros[k]}; }))
+    .sort((a,b) => a.hora.localeCompare(b.hora));
+}
+function statusDose(d){
+  if (d.reg) return d.reg.status;
+  const hoje = hojeStr();
+  if (d.dia < hoje) return "sem";
+  if (d.dia > hoje) return "agendada";
+  const dif = agoraMin() - toMin(d.hora);
+  if (dif < 0) return "agendada";
+  return dif <= 60 ? "agora" : "atrasada";
+}
+const MOTIVOS = ["Esqueci","Senti um efeito indesejado","O remédio acabou","Decidi não tomar","Outro motivo"];
+
+/* =========================================================
+   D. TEMA E NOTIFICAÇÕES
+   ========================================================= */
+const TEMAS = {auto:["Automático","auto"], light:["Claro","sun"], dark:["Escuro","moon"]};
+let tema = pref.get("mc:tema","auto");
+function aplicarTema(){
+  const r = document.documentElement;
+  tema === "auto" ? r.removeAttribute("data-theme") : r.setAttribute("data-theme", tema);
+  const b = document.getElementById("themeBtn");
+  b.innerHTML = icon(TEMAS[tema][1]) + `<span>${TEMAS[tema][0]}</span>`;
+  b.setAttribute("aria-label", `Tema ${TEMAS[tema][0]}. Toque para mudar`);
+  const escuro = tema === "dark" || (tema === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.querySelector('meta[name="theme-color"]').content = escuro ? "#111020" : "#F5F5FB";
+}
+document.getElementById("themeBtn").onclick = () => { tema = tema === "auto" ? "light" : tema === "light" ? "dark" : "auto"; pref.set("mc:tema", tema); aplicarTema(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", aplicarTema);
+
+const temNotif = () => "Notification" in window;
+function desenharNotif(){
+  const b = document.getElementById("notifBtn");
+  const on = temNotif() && Notification.permission === "granted";
+  b.classList.toggle("on", on);
+  b.innerHTML = icon(on ? "bell" : "belloff") + `<span>${on ? "Lembretes ativos" : "Ativar lembretes"}</span>`;
+  b.setAttribute("aria-label", on ? "Notificações do sistema ativas" : "Ativar notificações do sistema");
+}
+document.getElementById("notifBtn").onclick = async () => {
+  if (!temNotif()){ toast("Este navegador não envia notificações. Os alertas aparecem dentro do app enquanto ele estiver aberto.","info"); return; }
+  if (Notification.permission === "granted"){ toast("Os lembretes já estão ativos neste aparelho.","bell"); return; }
+  try{ await Notification.requestPermission(); }catch(e){}
+  desenharNotif();
+  toast(Notification.permission === "granted" ? "Pronto: você vai receber os lembretes." :
+    "As notificações foram bloqueadas aqui. Os alertas continuam aparecendo dentro do app.", Notification.permission === "granted" ? "check" : "info");
+};
+function notificar(titulo, corpo){
+  try{ if (temNotif() && Notification.permission === "granted") new Notification(titulo, {body:corpo, tag:titulo+corpo}); }catch(e){}
+}
+let audioCtx = null;
+function bip(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    [0, .22, .44].forEach(t => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), at = audioCtx.currentTime + t;
+      o.frequency.value = 880; o.type = "sine";
+      g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(.2, at+.02); g.gain.exponentialRampToValueAtTime(.0001, at+.18);
+      o.connect(g).connect(audioCtx.destination); o.start(at); o.stop(at+.2);
+    });
+  }catch(e){}
+}
+
+/* ---------- Avisos rápidos ---------- */
+function toast(msg, ic="check"){
+  const z = document.getElementById("toasts");
+  const t = document.createElement("div");
+  t.className = "toast"; t.innerHTML = icon(ic) + `<span>${esc(msg)}</span>`;
+  z.appendChild(t); setTimeout(() => t.remove(), 4200);
+}
+
+/* =========================================================
+   E. DIÁLOGOS
+   ========================================================= */
+const sheet = document.getElementById("sheet"), sheetBody = document.getElementById("sheetBody");
+function abrirSheet(html, montar){
+  sheetBody.innerHTML = html;
+  if (!sheet.open) sheet.showModal();
+  sheetBody.querySelectorAll("[data-fechar]").forEach(b => b.onclick = fecharSheet);
+  montar && montar(sheetBody);
+  const f = sheetBody.querySelector("input,select,textarea,button:not([data-fechar])"); f && f.focus();
+}
+function fecharSheet(){ if (sheet.open) sheet.close(); }
+sheet.addEventListener("click", e => { if (e.target === sheet) fecharSheet(); });
+const cabSheet = t => `<div class="sheet-head"><h2 id="sheetTitle">${t}</h2><button class="icon-btn" type="button" data-fechar aria-label="Fechar">${icon("x")}</button></div>`;
+function confirmar(titulo, texto, rotulo, acao){
+  abrirSheet(`${cabSheet(titulo)}<p class="muted" style="margin:0">${texto}</p>
+    <div class="sheet-foot"><button class="btn" data-fechar type="button">Cancelar</button><button class="btn btn-primary" id="okBtn" type="button">${rotulo}</button></div>`,
+    b => b.querySelector("#okBtn").onclick = () => { fecharSheet(); acao(); });
+}
+function validar(form, regras){
+  let ok = true;
+  form.querySelectorAll(".field").forEach(f => f.classList.remove("invalid"));
+  for (const [nome, teste] of regras){
+    const el = form.elements[nome]; const campo = el && (el.closest ? el.closest(".field") : null);
+    if (!teste()){ ok = false; campo && campo.classList.add("invalid"); }
+  }
+  if (!ok) form.querySelector(".invalid input, .invalid select, .invalid textarea")?.focus();
+  return ok;
+}
+
+/* =========================================================
+   F. ROTAS E ESTADO DA INTERFACE
+   ========================================================= */
+const ABAS = [["hoje","Hoje","home"],["remedios","Remédios","capsule"],["agenda","Agenda","cal"],["diario","Diário","book"],["resumo","Consulta","clip"]];
+const ui = { remAba:"lista", diaAba:"registrar", resAba:"preparar", mes:new Date(), diaSel:hojeStr(), periodo:30, filtroDiario:"todos", consultaPrep:null };
+let rotaAtual = "hoje";
+function rota(){
+  const h = (location.hash || "#hoje").slice(1);
+  rotaAtual = ABAS.some(a => a[0] === h) ? h : "hoje";
+  render(); window.scrollTo(0,0);
+}
+function render(){
+  const app = document.getElementById("app");
+  ({hoje:telaHoje, remedios:telaRemedios, agenda:telaAgenda, diario:telaDiario, resumo:telaResumo})[rotaAtual](app);
+  document.getElementById("tabbar").innerHTML = ABAS.map(([id,rot,ic]) =>
+    `<a class="tab" href="#${id}" ${id===rotaAtual?'aria-current="page"':""}><span class="tab-ic">${icon(ic)}</span><span>${rot}</span></a>`).join("");
+}
+window.addEventListener("hashchange", rota);
+
+/* =========================================================
+   G. TELA HOJE
+   ========================================================= */
+const capsuleDeco = `<svg class="hero-deco" viewBox="0 0 100 100" aria-hidden="true"><rect x="30" y="4" width="40" height="92" rx="20" fill="none" stroke="currentColor" stroke-width="6"/><path d="M30 50h40" stroke="currentColor" stroke-width="6"/></svg>`;
+function quantoFalta(h){
+  const d = toMin(h) - agoraMin(); const hh = Math.floor(d/60), mm = d % 60;
+  return d <= 0 ? "agora" : `em ${hh ? hh + " h " : ""}${mm} min`;
+}
+function botoesDose(d, hero){
+  return hero
+    ? `<button class="btn b-take" data-acao="tomar" data-k="${d.chave}">${icon("check")} Tomei</button>
+       <button class="btn b-skip" data-acao="naotomar" data-k="${d.chave}">Não tomei</button>`
+    : `<button class="btn btn-sm btn-ok" data-acao="tomar" data-k="${d.chave}">${icon("check")} Tomei</button>
+       <button class="btn btn-sm" data-acao="naotomar" data-k="${d.chave}">Não tomei</button>`;
+}
+function tagStatus(d, st){
+  if (st === "tomada") return `<span class="tag tag-ok">${icon("check")} Tomada às ${d.reg.hora}</span>`;
+  if (st === "nao") return `<span class="tag tag-bad">Não tomada${d.reg.motivo ? ": " + esc(d.reg.motivo.toLowerCase()) : ""}</span>`;
+  if (st === "atrasada") return `<span class="tag tag-warn">Sem registro</span>`;
+  if (st === "agora") return `<span class="tag tag-info">Está na hora</span>`;
+  if (st === "sem") return `<span class="tag tag-mute">Sem registro</span>`;
+  return `<span class="tag tag-mute">${quantoFalta(d.hora)}</span>`;
+}
+function semana(){
+  const hoje = hojeStr(), out = [];
+  for (let i = 6; i >= 0; i--){
+    const dia = addDias(hoje, -i);
+    const ds = dosesDoDia(dia).filter(d => dia < hoje || toMin(d.hora) <= agoraMin() || d.reg);
+    out.push({dia, total:ds.length, tomadas:ds.filter(d => d.reg?.status === "tomada").length});
+  }
+  return out;
+}
+function proximaConsulta(){
+  const agora = `${hojeStr()}T${horaAgora()}`;
+  return D.consultas.filter(c => `${c.data}T${c.hora}` >= agora).sort((a,b) => (a.data+a.hora).localeCompare(b.data+b.hora))[0];
+}
+function apptHTML(c, comoBotao){
+  const d = parseYmd(c.data);
+  const inner = `<span class="appt-date"><b>${d.getDate()}</b><small>${MESES[d.getMonth()].slice(0,3)}</small></span>
+    <span class="appt-info"><b>${esc(c.titulo)}</b><span>${esc(c.tipo)} às ${c.hora}${c.profissional ? ", " + esc(c.profissional) : ""}</span>${c.local ? `<span>${esc(c.local)}</span>` : ""}</span>`;
+  return comoBotao ? `<button class="appt-item" type="button" data-acao="ver-consulta" data-id="${c.id}">${inner}${icon("chevR","muted")}</button>` : inner;
+}
+
+function telaHoje(app){
+  const dia = hojeStr();
+  const doses = dosesDoDia(dia).map(d => ({...d, st:statusDose(d)}));
+  const pend = doses.find(d => d.st === "agora" || d.st === "atrasada");
+  const prox = doses.find(d => d.st === "agendada");
+  const sos = D.meds.filter(m => m.freq === "sos" && (!m.fim || dia <= m.fim));
+  const h = new Date().getHours();
+  const saud = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+  const nome = D.perfil.nome ? ", " + esc(D.perfil.nome.split(" ")[0]) : "";
+
+  let hero;
+  if (!D.meds.length){
+    hero = `<section class="hero">${capsuleDeco}
+      <span class="hero-kicker">${icon("spark")} Primeiros passos</span>
+      <div class="hero-time" style="font-size:2.3rem;font-weight:500;letter-spacing:-.02em">Cadastre seus remédios</div>
+      <p class="hero-note">O MedCare avisa na hora de cada dose e guarda o histórico para você mostrar ao médico.</p>
+      <div class="hero-act"><button class="btn b-take" data-acao="novo-remedio">${icon("plus")} Cadastrar remédio</button>
+      <button class="btn b-skip" data-acao="exemplo">Ver com dados de exemplo</button></div></section>`;
+  } else if (pend){
+    hero = `<section class="hero" aria-label="Dose pendente">${capsuleDeco}
+      <span class="hero-kicker ${pend.st === "atrasada" ? "late" : ""}">${icon("clock")} ${pend.st === "atrasada" ? "Dose sem registro" : "Está na hora"}</span>
+      <div class="hero-time">${pend.hora}</div>
+      <div class="hero-med"><i class="pill" style="--pill:${pend.m.cor}"></i><span><b>${esc(pend.m.nome)}</b><br>${doseTxt(pend.m)}</span></div>
+      ${pend.m.obs ? `<p class="hero-note">${esc(pend.m.obs)}</p>` : ""}
+      <div class="hero-act">${botoesDose(pend, true)}</div></section>`;
+  } else if (prox){
+    hero = `<section class="hero" aria-label="Próxima dose">${capsuleDeco}
+      <span class="hero-kicker">${icon("clock")} Próxima dose ${quantoFalta(prox.hora)}</span>
+      <div class="hero-time">${prox.hora}</div>
+      <div class="hero-med"><i class="pill" style="--pill:${prox.m.cor}"></i><span><b>${esc(prox.m.nome)}</b><br>${doseTxt(prox.m)}</span></div>
+      ${prox.m.obs ? `<p class="hero-note">${esc(prox.m.obs)}</p>` : ""}</section>`;
+  } else {
+    hero = `<section class="hero calm"><span class="hero-kicker">${icon("check")} Tudo registrado</span>
+      <div class="hero-time">Nenhuma dose pendente hoje</div>
+      <p class="hero-note muted" style="margin:0">Os lembretes de amanhã já estão programados.</p></section>`;
+  }
+
+  const sem = semana();
+  const tot = sem.reduce((a,s) => a + s.total, 0), tom = sem.reduce((a,s) => a + s.tomadas, 0);
+  const pc = tot ? Math.round(tom/tot*100) : null;
+  const pc_ = proximaConsulta();
+
+  app.innerHTML = `
+    <div class="greet"><h1>${saud}${nome}</h1><p>${fmtLonga(dia).replace(/^./, c => c.toUpperCase())}</p></div>
+    <div class="cols">
+      <div class="stack">
+        ${hero}
+        <section class="card">
+          <div class="card-head"><h2>Doses de hoje</h2><a class="btn btn-sm btn-ghost" href="#remedios">Gerenciar</a></div>
+          ${doses.length ? `<ol class="timeline">${doses.map(d => `
+            <li class="dose">
+              <span class="dose-time ${d.st === "agendada" ? "" : "past"}">${d.hora}</span>
+              <div class="dose-main">
+                <div class="dose-info"><i class="pill" style="--pill:${d.m.cor}"></i><div><b>${esc(d.m.nome)}</b><span>${doseTxt(d.m)}</span></div></div>
+                <div class="dose-act">${tagStatus(d, d.st)}
+                  ${d.reg ? `<button class="btn btn-sm btn-ghost" data-acao="desfazer" data-k="${d.chave}" aria-label="Desfazer registro">${icon("undo")}</button>`
+                    : (d.st !== "agendada" ? botoesDose(d) : "")}
+                </div>
+              </div>
+            </li>`).join("")}</ol>`
+          : `<div class="empty"><b>Nenhuma dose programada para hoje</b>${D.meds.length ? "Seus remédios não têm horário marcado para este dia." : "Cadastre um remédio para começar."}</div>`}
+        </section>
+        ${sos.length ? `<section class="card"><h2>Quando necessário</h2>
+          <div class="appt-list">${sos.map(m => `<div class="dose-main" style="align-items:center">
+            <div class="dose-info"><i class="pill" style="--pill:${m.cor}"></i><div><b>${esc(m.nome)}</b><span>${doseTxt(m)}${m.obs ? ". " + esc(m.obs) : ""}</span></div></div>
+            <button class="btn btn-sm" data-acao="sos" data-id="${m.id}">${icon("plus")} Registrar dose</button></div>`).join("")}</div>
+          <p class="muted" style="font-size:.84rem;margin:12px 0 0">Use somente conforme a orientação da receita.</p></section>` : ""}
+      </div>
+      <div class="stack">
+        <section class="card">
+          <div class="card-head"><h2>Últimos 7 dias</h2>${pc !== null ? `<span class="big-stat">${pc}%</span>` : ""}</div>
+          <p class="muted" style="margin:0;font-size:.88rem">${pc !== null ? `${tom} de ${tot} doses registradas como tomadas.` : "O gráfico aparece depois das primeiras doses."}</p>
+          <div class="week" role="img" aria-label="Doses tomadas em cada um dos últimos 7 dias">
+            ${sem.map((s,i) => `<div class="wcol ${i === 6 ? "today" : ""}"><div class="wbar ${s.total ? "" : "none"}" title="${s.tomadas} de ${s.total}"><i style="height:${s.total ? s.tomadas/s.total*100 : 0}%"></i></div><small>${i === 6 ? "Hoje" : DOW[parseYmd(s.dia).getDay()]}</small></div>`).join("")}
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>Próximo compromisso</h2><a class="btn btn-sm btn-ghost" href="#agenda">Agenda</a></div>
+          ${pc_ ? `${apptHTML(pc_, true)}<button class="btn btn-block" style="margin-top:12px" data-acao="preparar" data-id="${pc_.id}">${icon("clip")} Preparar esta consulta</button>`
+            : `<div class="empty"><b>Nenhuma consulta marcada</b><button class="btn btn-sm" data-acao="nova-consulta">${icon("plus")} Agendar</button></div>`}
+        </section>
+        <section class="quick" aria-label="Atalhos">
+          <button type="button" data-acao="novo-sintoma">${icon("book")} Anotar como estou me sentindo</button>
+          <button type="button" data-acao="nova-pergunta">${icon("help")} Guardar uma dúvida para o médico</button>
+        </section>
+      </div>
+    </div>`;
+}
+
+/* ---------- Registro de doses ---------- */
+function registrar(chave, status, motivo){
+  D.registros[chave] = {status, hora:horaAgora(), em:new Date().toISOString(), ...(motivo ? {motivo} : {})};
+  salvar(); render();
+}
+function perguntarMotivo(chave){
+  const [id,,hora] = chave.split("|"); const m = medPorId(id);
+  let escolhido = "";
+  abrirSheet(`${cabSheet("Dose não tomada")}
+    <p style="margin:0 0 12px"><b>${esc(m.nome)}</b> das ${hora}. O que aconteceu? <span class="muted">(opcional)</span></p>
+    <div class="chips" id="motivos">${MOTIVOS.map(t => `<button class="chip" type="button" aria-pressed="false">${t}</button>`).join("")}</div>
+    <div class="notice" style="margin-top:16px">${icon("info")}<span>Não tome dose dobrada para compensar. Se tiver dúvida sobre o que fazer, fale com seu médico ou farmacêutico.</span></div>
+    <div class="sheet-foot"><button class="btn" data-fechar type="button">Cancelar</button><button class="btn btn-primary" id="okBtn" type="button">Registrar</button></div>`,
+  b => {
+    b.querySelectorAll("#motivos .chip").forEach(c => c.onclick = () => {
+      b.querySelectorAll("#motivos .chip").forEach(x => x.setAttribute("aria-pressed", x === c));
+      escolhido = c.textContent;
+    });
+    b.querySelector("#okBtn").onclick = () => { fecharSheet(); registrar(chave, "nao", escolhido); toast("Registrado. Essa informação entra no resumo para o médico.","check"); };
+  });
+}
+
+/* =========================================================
+   H. TELA REMÉDIOS
+   ========================================================= */
+function telaRemedios(app){
+  app.innerHTML = `
+    <div class="page-head"><div><h1>Remédios</h1><p>Cadastre cada remédio exatamente como está na receita.</p></div>
+      <button class="btn btn-primary" data-acao="novo-remedio">${icon("plus")} Novo remédio</button></div>
+    <div class="seg" role="group" aria-label="Visualização" style="margin-bottom:16px">
+      <button type="button" data-acao="rem-aba" data-v="lista" aria-pressed="${ui.remAba==="lista"}">Meus remédios</button>
+      <button type="button" data-acao="rem-aba" data-v="hist" aria-pressed="${ui.remAba==="hist"}">Histórico de doses</button>
+    </div>
+    <div id="remConteudo"></div>`;
+  const c = app.querySelector("#remConteudo");
+  if (ui.remAba === "lista"){
+    c.innerHTML = D.meds.length ? `<div class="meds">${D.meds.map(m => `
+      <article class="med">
+        <i class="pill" style="--pill:${m.cor}"></i>
+        <div class="med-body">
+          <h3>${esc(m.nome)}</h3><p>${doseTxt(m)}</p>
+          <div class="med-times">${m.freq === "sos" ? `<span class="tag tag-mute">Sem horário fixo</span>` : m.horarios.map(h => `<span class="tag tag-info">${icon("clock")} ${h}</span>`).join("")}</div>
+          <p>${freqTxt(m)}${m.inicio ? `, desde ${fmtData(m.inicio)}` : ""}${m.fim ? ` até ${fmtData(m.fim)}` : ", uso contínuo"}</p>
+          ${m.obs ? `<p>${esc(m.obs)}</p>` : ""}
+          <div class="med-foot"><button class="btn btn-sm" data-acao="editar-remedio" data-id="${m.id}">${icon("edit")} Editar</button>
+            <button class="btn btn-sm btn-ghost btn-danger" data-acao="excluir-remedio" data-id="${m.id}">${icon("trash")} Excluir</button></div>
+        </div>
+      </article>`).join("")}</div>`
+    : `<div class="empty"><b>Nenhum remédio cadastrado</b>Tenha a receita em mãos e cadastre o primeiro.<br><button class="btn btn-primary" data-acao="novo-remedio">${icon("plus")} Novo remédio</button></div>`;
+  } else {
+    const hoje = hojeStr(); let html = "";
+    for (let i = 0; i < 14; i++){
+      const dia = addDias(hoje, -i);
+      const ds = dosesDoDia(dia).filter(d => d.reg || dia < hoje || toMin(d.hora) <= agoraMin());
+      const avulsas = Object.entries(D.registros).filter(([k]) => k.split("|")[1] === dia && k.split("|")[2].startsWith("sos"))
+        .map(([k,r]) => ({m:medPorId(k.split("|")[0]), hora:r.hora, reg:r, chave:k})).filter(x => x.m);
+      const todas = [...ds, ...avulsas].sort((a,b) => a.hora.localeCompare(b.hora));
+      if (!todas.length) continue;
+      html += `<section class="hist-day card"><h3>${i === 0 ? "Hoje" : i === 1 ? "Ontem" : fmtLonga(dia)}</h3>
+        ${todas.map(d => `<div class="hist-row"><span class="t">${d.hora}</span><i class="pill" style="--pill:${d.m.cor};height:20px;width:11px"></i>
+          <span class="n"><b>${esc(d.m.nome)}</b> <span class="muted">${doseTxt(d.m)}${d.chave.includes("sos") ? ", dose avulsa" : ""}</span></span>${tagStatus(d, statusDose(d))}</div>`).join("")}</section>`;
+    }
+    c.innerHTML = html || `<div class="empty"><b>Ainda não há doses registradas</b>Os registros de “Tomei” e “Não tomei” aparecem aqui.</div>`;
+  }
+}
+
+function formRemedio(m){
+  const novo = !m;
+  m = m || {nome:"", dose:"", unidade:"mg", qtd:1, forma:"comprimido", horarios:["08:00"], freq:"diario", dias:[1,2,3,4,5], inicio:hojeStr(), fim:"", cor:CORES[D.meds.length % CORES.length], obs:""};
+  let horarios = [...m.horarios];
+  abrirSheet(`${cabSheet(novo ? "Cadastrar remédio" : "Editar remédio")}
+    <form class="form" id="f" novalidate>
+      <div class="field"><label for="nome">Nome do remédio</label><input id="nome" name="nome" value="${esc(m.nome)}" placeholder="Ex.: Losartana" autocomplete="off"><div class="err">Informe o nome do remédio.</div></div>
+      <div class="row">
+        <div class="field"><label for="dose">Dosagem</label><input id="dose" name="dose" inputmode="decimal" value="${esc(num(m.dose))}" placeholder="Ex.: 50"><div class="err">Informe a dosagem.</div></div>
+        <div class="field"><label for="unidade">Unidade</label><select id="unidade" name="unidade">${UNIDADES.map(u => `<option ${u===m.unidade?"selected":""}>${u}</option>`).join("")}</select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="qtd">Quantidade por vez</label><input id="qtd" name="qtd" type="number" min="0.25" step="0.25" value="${m.qtd}"><div class="err">Informe a quantidade.</div></div>
+        <div class="field"><label for="forma">Forma</label><select id="forma" name="forma">${Object.entries(FORMAS).map(([k,v]) => `<option value="${k}" ${k===m.forma?"selected":""}>${v[1]}</option>`).join("")}</select></div>
+      </div>
+      <div class="field"><label for="freq">Frequência</label><select id="freq" name="freq">${Object.entries(FREQ).map(([k,v]) => `<option value="${k}" ${k===m.freq?"selected":""}>${v}</option>`).join("")}</select></div>
+      <div class="field" id="diasBox"><span class="lbl">Dias da semana</span><div class="chips" id="dias">${DOW.map((d,i) => `<button type="button" class="chip" data-d="${i}" aria-pressed="${m.dias.includes(i)}">${d}</button>`).join("")}</div><div class="err">Escolha ao menos um dia.</div><input type="hidden" name="diasCheck"></div>
+      <div class="field" id="horasBox"><span class="lbl">Horários</span><div class="times" id="horas"></div><div class="err">Adicione ao menos um horário.</div><input type="hidden" name="horasCheck"></div>
+      <div class="row">
+        <div class="field"><label for="inicio">Início</label><input id="inicio" name="inicio" type="date" value="${m.inicio}"><div class="err">Informe a data de início.</div></div>
+        <div class="field"><label for="fim">Término <span class="muted">(opcional)</span></label><input id="fim" name="fim" type="date" value="${m.fim}"><div class="err">O término deve ser depois do início.</div></div>
+      </div>
+      <div class="field"><span class="lbl">Cor para identificar</span><div class="colors">${CORES.map((c,i) => `<label><input type="radio" name="cor" value="${c}" ${c===m.cor?"checked":""} aria-label="Cor ${i+1}"><span style="--c:${c}"></span></label>`).join("")}</div></div>
+      <div class="field"><label for="obs">Observações da receita <span class="muted">(opcional)</span></label><input id="obs" name="obs" value="${esc(m.obs)}" placeholder="Ex.: tomar após o café da manhã"></div>
+      <div class="notice">${icon("info")}<span>Copie as informações da receita. O MedCare não altera prescrições nem sugere doses.</span></div>
+      <div class="sheet-foot"><button class="btn" data-fechar type="button">Cancelar</button><button class="btn btn-primary" type="submit">${icon("check")} Salvar remédio</button></div>
+    </form>`,
+  b => {
+    const f = b.querySelector("#f");
+    const desenharHoras = () => {
+      b.querySelector("#horas").innerHTML = horarios.map((h,i) => `<span class="time-item"><input type="time" value="${h}" data-i="${i}" aria-label="Horário ${i+1}"><button type="button" data-rm="${i}" aria-label="Remover horário">${icon("x")}</button></span>`).join("")
+        + `<button class="btn btn-sm" type="button" id="addHora">${icon("plus")} Horário</button>`;
+      b.querySelectorAll("#horas input").forEach(inp => inp.onchange = () => horarios[inp.dataset.i] = inp.value);
+      b.querySelectorAll("#horas [data-rm]").forEach(x => x.onclick = () => { horarios.splice(+x.dataset.rm,1); desenharHoras(); });
+      b.querySelector("#addHora").onclick = () => {
+        const ult = horarios.length ? toMin(horarios[horarios.length-1]) : 480; const n = (ult + 720) % 1440;
+        horarios.push(`${pad(Math.floor(n/60))}:${pad(n%60)}`); desenharHoras();
+      };
+    };
+    desenharHoras();
+    const vis = () => { b.querySelector("#diasBox").style.display = f.elements.freq.value === "dias" ? "" : "none"; b.querySelector("#horasBox").style.display = f.elements.freq.value === "sos" ? "none" : ""; };
+    vis(); f.elements.freq.onchange = vis;
+    b.querySelectorAll("#dias .chip").forEach(c => c.onclick = () => c.setAttribute("aria-pressed", c.getAttribute("aria-pressed") !== "true"));
+    f.onsubmit = e => {
+      e.preventDefault();
+      const dias = [...b.querySelectorAll("#dias .chip[aria-pressed=true]")].map(c => +c.dataset.d);
+      const hs = [...new Set(horarios.filter(Boolean))].sort();
+      const ok = validar(f, [
+        ["nome", () => f.elements.nome.value.trim()],
+        ["dose", () => f.elements.dose.value.trim() && !isNaN(parseFloat(f.elements.dose.value.replace(",", ".")))],
+        ["qtd", () => +f.elements.qtd.value > 0],
+        ["diasCheck", () => f.elements.freq.value !== "dias" || dias.length],
+        ["horasCheck", () => f.elements.freq.value === "sos" || hs.length],
+        ["inicio", () => f.elements.inicio.value],
+        ["fim", () => !f.elements.fim.value || f.elements.fim.value >= f.elements.inicio.value]
+      ]);
+      if (!ok) return;
+      const dados = {nome:f.elements.nome.value.trim(), dose:parseFloat(f.elements.dose.value.replace(",", ".")), unidade:f.elements.unidade.value, qtd:+f.elements.qtd.value, forma:f.elements.forma.value,
+        freq:f.elements.freq.value, dias, horarios: f.elements.freq.value === "sos" ? [] : hs, inicio:f.elements.inicio.value, fim:f.elements.fim.value, cor:f.elements.cor.value, obs:f.elements.obs.value.trim()};
+      if (novo) D.meds.push({id:uid(), ...dados}); else Object.assign(medPorId(m.id), dados);
+      salvar(); fecharSheet(); render();
+      toast(novo ? "Remédio cadastrado. Os lembretes já estão programados." : "Alterações salvas.");
+    };
+  });
+}
+
+/* =========================================================
+   I. TELA AGENDA
+   ========================================================= */
+const TIPOS_CONSULTA = ["Consulta","Retorno","Exame","Vacina","Outro"];
+const LEMBRETES = [[0,"Sem lembrete"],[60,"1 hora antes"],[180,"3 horas antes"],[1440,"1 dia antes"],[2880,"2 dias antes"]];
+function telaAgenda(app){
+  const y = ui.mes.getFullYear(), mo = ui.mes.getMonth();
+  const off = new Date(y, mo, 1).getDay(), nd = new Date(y, mo+1, 0).getDate(), hoje = hojeStr();
+  const comConsulta = new Set(D.consultas.map(c => c.data));
+  let cells = DOW.map(d => `<span class="dow">${d.slice(0,1)}</span>`).join("") + "<span></span>".repeat(off);
+  for (let d = 1; d <= nd; d++){
+    const s = `${y}-${pad(mo+1)}-${pad(d)}`;
+    cells += `<button type="button" class="${s===hoje?"today":""}" data-acao="dia" data-d="${s}" aria-pressed="${s===ui.diaSel}" aria-label="${fmtCurta(s)}${comConsulta.has(s)?", com compromisso":""}">${d}${comConsulta.has(s)?'<i class="dot"></i>':""}</button>`;
+  }
+  const doDia = D.consultas.filter(c => c.data === ui.diaSel).sort((a,b) => a.hora.localeCompare(b.hora));
+  const agora = `${hoje}T${horaAgora()}`;
+  const proximas = D.consultas.filter(c => `${c.data}T${c.hora}` >= agora).sort((a,b) => (a.data+a.hora).localeCompare(b.data+b.hora));
+  app.innerHTML = `
+    <div class="page-head"><div><h1>Agenda de saúde</h1><p>Consultas, exames e outros compromissos.</p></div>
+      <button class="btn btn-primary" data-acao="nova-consulta">${icon("plus")} Novo compromisso</button></div>
+    <div class="cols">
+      <section class="card">
+        <div class="cal-head"><button class="icon-btn" data-acao="mes" data-n="-1" aria-label="Mês anterior">${icon("chevL")}</button>
+          <h2>${MESES[mo]} ${y}</h2><button class="icon-btn" data-acao="mes" data-n="1" aria-label="Próximo mês">${icon("chevR")}</button></div>
+        <div class="cal">${cells}</div>
+        <div style="margin-top:16px">
+          <h3 style="font-size:1rem;margin-bottom:10px">${ui.diaSel === hoje ? "Hoje" : fmtLonga(ui.diaSel)}</h3>
+          ${doDia.length ? `<div class="appt-list">${doDia.map(c => apptHTML(c, true)).join("")}</div>`
+            : `<div class="empty">Nenhum compromisso neste dia.<br><button class="btn btn-sm" data-acao="nova-consulta" data-d="${ui.diaSel}">${icon("plus")} Adicionar neste dia</button></div>`}
+        </div>
+      </section>
+      <section class="card">
+        <h2>Próximos compromissos</h2>
+        ${proximas.length ? `<div class="appt-list">${proximas.slice(0,6).map(c => apptHTML(c, true)).join("")}</div>`
+          : `<div class="empty"><b>Nada agendado</b>Marque a próxima consulta para receber um lembrete.</div>`}
+        <div class="notice" style="margin-top:14px">${icon("info")}<span>Leve exames anteriores e a lista de remédios. A aba Consulta prepara tudo isso para você.</span></div>
+      </section>
+    </div>`;
+}
+function linkGoogle(c){
+  const ini = c.data.replace(/-/g,"") + "T" + c.hora.replace(":","") + "00";
+  const f = new Date(`${c.data}T${c.hora}`); f.setHours(f.getHours()+1);
+  const fim = ymd(f).replace(/-/g,"") + "T" + pad(f.getHours()) + pad(f.getMinutes()) + "00";
+  const p = new URLSearchParams({action:"TEMPLATE", text:`${c.tipo}: ${c.titulo}`, dates:`${ini}/${fim}`, details:c.obs || "", location:c.local || "", ctz:"America/Sao_Paulo"});
+  return "https://calendar.google.com/calendar/render?" + p.toString();
+}
+function verConsulta(id){
+  const c = D.consultas.find(x => x.id === id); if (!c) return;
+  abrirSheet(`${cabSheet("Detalhes do compromisso")}
+    <div class="appt" style="margin-bottom:14px">${apptHTML(c)}</div>
+    <div class="stack" style="gap:8px;font-size:.95rem">
+      <span>${icon("cal")} ${fmtLonga(c.data)}, às ${c.hora}</span>
+      ${c.profissional ? `<span>${icon("user")} ${esc(c.profissional)}</span>` : ""}
+      ${c.local ? `<span>${icon("pin")} ${esc(c.local)}</span>` : ""}
+      <span>${icon("bell")} ${LEMBRETES.find(l => l[0] === +c.lembrete)?.[1] || "Sem lembrete"}</span>
+    </div>
+    ${c.obs ? `<div class="notice" style="margin-top:14px">${icon("info")}<span>${esc(c.obs)}</span></div>` : ""}
+    <div class="sheet-foot" style="justify-content:flex-start">
+      <button class="btn btn-primary" data-acao2="preparar">${icon("clip")} Preparar consulta</button>
+      <a class="btn" href="${linkGoogle(c)}" target="_blank" rel="noopener">${icon("ext")} Google Agenda</a>
+      <button class="btn" data-acao2="editar">${icon("edit")} Editar</button>
+      <button class="btn btn-ghost btn-danger" data-acao2="excluir">${icon("trash")} Excluir</button>
+    </div>`,
+  b => {
+    b.querySelector('[data-acao2="preparar"]').onclick = () => { fecharSheet(); ui.consultaPrep = c.id; ui.resAba = "preparar"; location.hash = "#resumo"; if (rotaAtual === "resumo") render(); };
+    b.querySelector('[data-acao2="editar"]').onclick = () => formConsulta(c);
+    b.querySelector('[data-acao2="excluir"]').onclick = () => confirmar("Excluir compromisso?", `${esc(c.titulo)} em ${fmtData(c.data)} será removido da agenda.`, "Excluir", () => {
+      D.consultas = D.consultas.filter(x => x.id !== c.id); salvar(); render(); toast("Compromisso excluído.","trash");
+    });
+  });
+}
+function formConsulta(c, diaPadrao){
+  const novo = !c;
+  c = c || {tipo:"Consulta", titulo:"", profissional:"", data:diaPadrao || hojeStr(), hora:"09:00", local:"", obs:"", lembrete:1440};
+  abrirSheet(`${cabSheet(novo ? "Novo compromisso" : "Editar compromisso")}
+    <form class="form" id="f" novalidate>
+      <div class="row">
+        <div class="field"><label for="tipo">Tipo</label><select id="tipo" name="tipo">${TIPOS_CONSULTA.map(t => `<option ${t===c.tipo?"selected":""}>${t}</option>`).join("")}</select></div>
+        <div class="field"><label for="titulo">Especialidade ou exame</label><input id="titulo" name="titulo" value="${esc(c.titulo)}" placeholder="Ex.: Cardiologia"><div class="err">Informe a especialidade ou o exame.</div></div>
+      </div>
+      <div class="field"><label for="profissional">Profissional <span class="muted">(opcional)</span></label><input id="profissional" name="profissional" value="${esc(c.profissional)}" placeholder="Ex.: Dra. Ana Souza"></div>
+      <div class="row">
+        <div class="field"><label for="data">Data</label><input id="data" name="data" type="date" value="${c.data}"><div class="err">Informe a data.</div></div>
+        <div class="field"><label for="hora">Horário</label><input id="hora" name="hora" type="time" value="${c.hora}"><div class="err">Informe o horário.</div></div>
+      </div>
+      <div class="field"><label for="local">Local <span class="muted">(opcional)</span></label><input id="local" name="local" value="${esc(c.local)}" placeholder="Ex.: UBS Vila Mariana"></div>
+      <div class="field"><label for="lembrete">Lembrete</label><select id="lembrete" name="lembrete">${LEMBRETES.map(([v,t]) => `<option value="${v}" ${v===+c.lembrete?"selected":""}>${t}</option>`).join("")}</select></div>
+      <div class="field"><label for="obs">Observações <span class="muted">(opcional)</span></label><textarea id="obs" name="obs" placeholder="Ex.: levar exames anteriores, ir em jejum de 8 horas">${esc(c.obs)}</textarea></div>
+      <div class="sheet-foot"><button class="btn" data-fechar type="button">Cancelar</button><button class="btn btn-primary" type="submit">${icon("check")} Salvar</button></div>
+    </form>`,
+  b => {
+    const f = b.querySelector("#f");
+    f.onsubmit = e => {
+      e.preventDefault();
+      if (!validar(f, [["titulo", () => f.elements.titulo.value.trim()], ["data", () => f.elements.data.value], ["hora", () => f.elements.hora.value]])) return;
+      const dados = {tipo:f.elements.tipo.value, titulo:f.elements.titulo.value.trim(), profissional:f.elements.profissional.value.trim(), data:f.elements.data.value, hora:f.elements.hora.value,
+        local:f.elements.local.value.trim(), lembrete:+f.elements.lembrete.value, obs:f.elements.obs.value.trim()};
+      if (novo) D.consultas.push({id:uid(), ...dados}); else Object.assign(D.consultas.find(x => x.id === c.id), dados);
+      ui.diaSel = dados.data; ui.mes = parseYmd(dados.data);
+      salvar(); fecharSheet(); render(); toast(novo ? "Compromisso agendado." : "Alterações salvas.");
+    };
+  });
+}
+
+/* =========================================================
+   J. TELA DIÁRIO
+   ========================================================= */
+const TIPOS_DIARIO = ["Sintoma","Efeito indesejado","Dificuldade com o tratamento","Acontecimento"];
+const INTENS = {1:"Leve", 2:"Moderada", 3:"Forte"};
+const FREQS = ["Uma vez","Algumas vezes","Todos os dias","O tempo todo"];
+function telaDiario(app){
+  app.innerHTML = `
+    <div class="page-head"><div><h1>Diário de saúde</h1><p>Anote o que sentiu para não esquecer na hora da consulta.</p></div></div>
+    <div class="seg" role="group" aria-label="Visualização" style="margin-bottom:16px">
+      <button type="button" data-acao="dia-aba" data-v="registrar" aria-pressed="${ui.diaAba==="registrar"}">Registrar</button>
+      <button type="button" data-acao="dia-aba" data-v="hist" aria-pressed="${ui.diaAba==="hist"}">Histórico (${D.diario.length})</button>
+    </div>
+    <div id="diaConteudo"></div>`;
+  const c = app.querySelector("#diaConteudo");
+  if (ui.diaAba === "registrar"){
+    c.innerHTML = `<div class="cols"><section class="card">${formDiarioHTML()}</section>
+      <section class="card"><h2>O que vale anotar</h2>
+        <ul style="margin:0;padding-left:20px;color:var(--muted);display:grid;gap:6px">
+          <li>Quando o sintoma começou e quanto tempo dura</li>
+          <li>Se piora em algum horário ou situação</li>
+          <li>Reações que surgiram depois de um remédio novo</li>
+          <li>Dificuldades para seguir a receita, como custo ou dificuldade para engolir</li>
+          <li>Acontecimentos como quedas, febre ou idas ao pronto-socorro</li>
+        </ul>
+        <div class="notice" style="margin-top:14px">${icon("info")}<span>O diário serve para conversar com o médico. Ele não faz diagnóstico. Em caso de piora rápida ou sinais graves, procure atendimento ou ligue 192.</span></div>
+      </section></div>`;
+    montarFormDiario(c);
+  } else {
+    const filtros = ["todos", ...TIPOS_DIARIO];
+    const lista = D.diario.filter(e => ui.filtroDiario === "todos" || e.tipo === ui.filtroDiario).sort((a,b) => (b.data+b.criado).localeCompare(a.data+a.criado));
+    c.innerHTML = `<div class="chips" style="margin-bottom:14px">${filtros.map(f => `<button class="chip" data-acao="filtro-diario" data-v="${f}" aria-pressed="${ui.filtroDiario===f}">${f === "todos" ? "Todos" : f}</button>`).join("")}</div>
+      ${lista.length ? `<div class="entries">${lista.map(entradaHTML).join("")}</div>`
+        : `<div class="empty"><b>Nenhum registro ${ui.filtroDiario === "todos" ? "ainda" : "deste tipo"}</b><button class="btn btn-sm" data-acao="dia-aba" data-v="registrar">${icon("plus")} Registrar</button></div>`}`;
+  }
+}
+function entradaHTML(e){
+  const m = e.medId ? medPorId(e.medId) : null;
+  return `<article class="entry i${e.intensidade}">
+    <span class="entry-face" aria-hidden="true">${FACES[e.intensidade]}</span>
+    <div class="entry-body">
+      <b>${esc(e.titulo)}</b>
+      <div class="entry-meta"><span class="tag tag-mute">${esc(e.tipo)}</span><span class="tag i${e.intensidade}" style="background:var(--fcs);color:var(--fc)">${INTENS[e.intensidade]}</span>
+        ${e.frequencia ? `<span class="tag tag-mute">${esc(e.frequencia)}</span>` : ""}${m ? `<span class="tag tag-info">${esc(m.nome)}</span>` : ""}</div>
+      <p>Registrado em ${fmtData(e.data)}${e.inicio ? `, começou em ${fmtData(e.inicio)}` : ""}${e.duracao ? `, duração: ${esc(e.duracao)}` : ""}</p>
+      ${e.obs ? `<p>${esc(e.obs)}</p>` : ""}
+    </div>
+    <button class="btn btn-sm btn-ghost btn-danger" data-acao="excluir-diario" data-id="${e.id}" aria-label="Excluir registro">${icon("trash")}</button>
+  </article>`;
+}
+function formDiarioHTML(){
+  return `<form class="form" id="fd" novalidate>
+    <div class="field"><span class="lbl">Tipo de registro</span><div class="chips" id="tipos">${TIPOS_DIARIO.map((t,i) => `<button type="button" class="chip" aria-pressed="${i===0}">${t}</button>`).join("")}</div></div>
+    <div class="field"><label for="titulo">Como você está se sentindo?</label><input id="titulo" name="titulo" placeholder="Ex.: dor de cabeça, enjoo, cansaço"><div class="err">Descreva o que sentiu.</div></div>
+    <div class="field"><span class="lbl">Intensidade</span><div class="faces" id="faces">${[1,2,3].map(i => `<button type="button" class="face i${i}" data-i="${i}" aria-pressed="${i===2}">${FACES[i]}${INTENS[i]}</button>`).join("")}</div></div>
+    <div class="row">
+      <div class="field"><label for="inicio">Quando começou</label><input id="inicio" name="inicio" type="date" value="${hojeStr()}" max="${hojeStr()}"></div>
+      <div class="field"><label for="frequencia">Com que frequência</label><select id="frequencia" name="frequencia"><option value="">Não sei</option>${FREQS.map(f => `<option>${f}</option>`).join("")}</select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="duracao">Duração</label><input id="duracao" name="duracao" placeholder="Ex.: cerca de 2 horas"></div>
+      <div class="field"><label for="medId">Relacionado a um remédio?</label><select id="medId" name="medId"><option value="">Nenhum ou não sei</option>${D.meds.map(m => `<option value="${m.id}">${esc(m.nome)}</option>`).join("")}</select></div>
+    </div>
+    <div class="field"><label for="obs">Observações</label><textarea id="obs" name="obs" placeholder="O que melhora ou piora, o que você estava fazendo..."></textarea></div>
+    <button class="btn btn-primary btn-block" type="submit">${icon("check")} Salvar registro</button>
+  </form>`;
+}
+function montarFormDiario(root, aoSalvar){
+  const f = root.querySelector("#fd");
+  let tipo = TIPOS_DIARIO[0], intensidade = 2;
+  root.querySelectorAll("#tipos .chip").forEach(c => c.onclick = () => { root.querySelectorAll("#tipos .chip").forEach(x => x.setAttribute("aria-pressed", x === c)); tipo = c.textContent; });
+  root.querySelectorAll("#faces .face").forEach(c => c.onclick = () => { root.querySelectorAll("#faces .face").forEach(x => x.setAttribute("aria-pressed", x === c)); intensidade = +c.dataset.i; });
+  f.onsubmit = e => {
+    e.preventDefault();
+    if (!validar(f, [["titulo", () => f.elements.titulo.value.trim()]])) return;
+    D.diario.push({id:uid(), tipo, titulo:f.elements.titulo.value.trim(), intensidade, inicio:f.elements.inicio.value, frequencia:f.elements.frequencia.value,
+      duracao:f.elements.duracao.value.trim(), medId:f.elements.medId.value, obs:f.elements.obs.value.trim(), data:hojeStr(), criado:horaAgora()});
+    salvar(); toast("Registro salvo no diário.");
+    if (aoSalvar) aoSalvar(); else { ui.diaAba = "hist"; render(); }
+  };
+}
+
+/* =========================================================
+   K. TELA CONSULTA (preparação + resumo para o médico)
+   ========================================================= */
+function adesao(dias){
+  const hoje = hojeStr(), ini = addDias(hoje, -(dias-1)), porMed = {}, motivos = {};
+  for (let i = 0; i < dias; i++){
+    const dia = addDias(ini, i);
+    dosesDoDia(dia).forEach(d => {
+      if (dia === hoje && toMin(d.hora) > agoraMin() && !d.reg) return;
+      const p = porMed[d.m.id] = porMed[d.m.id] || {m:d.m, total:0, tomadas:0, nao:0, sem:0};
+      p.total++;
+      if (d.reg?.status === "tomada") p.tomadas++;
+      else if (d.reg?.status === "nao"){ p.nao++; const mt = d.reg.motivo || "Motivo não informado"; motivos[mt] = (motivos[mt] || 0) + 1; }
+      else p.sem++;
+    });
+  }
+  const avulsas = Object.entries(D.registros).filter(([k]) => k.includes("|sos") && k.split("|")[1] >= ini).length;
+  return {ini, lista:Object.values(porMed), motivos, avulsas};
+}
+function telaResumo(app){
+  const agora = `${hojeStr()}T${horaAgora()}`;
+  const proximas = D.consultas.filter(c => `${c.data}T${c.hora}` >= agora).sort((a,b) => (a.data+a.hora).localeCompare(b.data+b.hora));
+  if (!ui.consultaPrep || !D.consultas.some(c => c.id === ui.consultaPrep)) ui.consultaPrep = proximas[0]?.id || null;
+  const cons = D.consultas.find(c => c.id === ui.consultaPrep);
+
+  app.innerHTML = `
+    <div class="page-head"><div><h1>Consulta</h1><p>Organize o que levar e mostre ao médico um resumo claro.</p></div></div>
+    <div class="seg" role="group" aria-label="Visualização" style="margin-bottom:16px">
+      <button type="button" data-acao="res-aba" data-v="preparar" aria-pressed="${ui.resAba==="preparar"}">Preparar</button>
+      <button type="button" data-acao="res-aba" data-v="resumo" aria-pressed="${ui.resAba==="resumo"}">Resumo para o médico</button>
+    </div>
+    <div id="resConteudo"></div>`;
+  const c = app.querySelector("#resConteudo");
+
+  if (ui.resAba === "preparar"){
+    c.innerHTML = `
+      <div class="cols">
+        <div class="stack">
+          <section class="card">
+            <h2>Qual consulta?</h2>
+            ${proximas.length ? `<div class="field"><label class="sr-only" for="selCons">Consulta</label><select id="selCons">${proximas.map(p => `<option value="${p.id}" ${p.id===ui.consultaPrep?"selected":""}>${fmtData(p.data)} às ${p.hora}: ${esc(p.titulo)}</option>`).join("")}</select></div>
+              ${cons ? `<div class="appt" style="margin-top:12px">${apptHTML(cons)}</div>${cons.obs ? `<div class="notice" style="margin-top:12px">${icon("info")}<span>${esc(cons.obs)}</span></div>` : ""}` : ""}`
+              : `<div class="empty"><b>Nenhuma consulta agendada</b><button class="btn btn-sm" data-acao="nova-consulta">${icon("plus")} Agendar consulta</button></div>`}
+          </section>
+          <section class="card">
+            <h2>Itens para levar</h2>
+            <ul class="checklist">${D.checklist.map(i => `<li class="${i.ok?"done":""}"><input type="checkbox" id="ck${i.id}" data-acao="check" data-id="${i.id}" ${i.ok?"checked":""}><label for="ck${i.id}">${esc(i.texto)}</label>
+              <button class="btn btn-sm btn-ghost" data-acao="rm-check" data-id="${i.id}" aria-label="Remover item">${icon("x")}</button></li>`).join("")}</ul>
+            <div class="add-row"><label class="sr-only" for="novoItem">Novo item</label><input id="novoItem" placeholder="Adicionar item, ex.: óculos"><button class="btn" data-acao="add-check">${icon("plus")}</button></div>
+            <button class="btn btn-sm btn-ghost" data-acao="limpar-check" style="margin-top:8px">Desmarcar todos</button>
+          </section>
+        </div>
+        <section class="card">
+          <h2>Perguntas para o médico</h2>
+          <p class="muted" style="margin:-4px 0 12px;font-size:.9rem">Escreva as dúvidas assim que elas surgirem. Na consulta, marque as que foram respondidas.</p>
+          ${D.perguntas.length ? `<ul class="checklist">${D.perguntas.map(p => `<li class="${p.respondida?"done":""}"><input type="checkbox" id="pg${p.id}" data-acao="responder" data-id="${p.id}" ${p.respondida?"checked":""}><label for="pg${p.id}">${esc(p.texto)}</label>
+            <button class="btn btn-sm btn-ghost" data-acao="rm-pergunta" data-id="${p.id}" aria-label="Excluir pergunta">${icon("trash")}</button></li>`).join("")}</ul>`
+            : `<div class="empty">Nenhuma pergunta ainda.</div>`}
+          <div class="add-row"><label class="sr-only" for="novaPerg">Nova pergunta</label><input id="novaPerg" placeholder="Ex.: Posso tomar este remédio com café?"><button class="btn btn-primary" data-acao="add-pergunta">${icon("plus")} Adicionar</button></div>
+          <button class="btn btn-block" style="margin-top:16px" data-acao="res-aba" data-v="resumo">${icon("pdf")} Ver resumo para o médico</button>
+        </section>
+      </div>`;
+    const sel = c.querySelector("#selCons"); if (sel) sel.onchange = () => { ui.consultaPrep = sel.value; render(); };
+    const enter = (id, acao) => { const el = c.querySelector(id); el && el.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); acao(); } }); };
+    enter("#novoItem", addCheck); enter("#novaPerg", addPergunta);
+    return;
+  }
+
+  /* ----- Resumo ----- */
+  const ad = adesao(ui.periodo);
+  const tot = ad.lista.reduce((a,p) => a + p.total, 0), tom = ad.lista.reduce((a,p) => a + p.tomadas, 0);
+  const sint = D.diario.filter(e => e.data >= ad.ini).sort((a,b) => b.data.localeCompare(a.data));
+  const perg = D.perguntas.filter(p => !p.respondida);
+  const ativos = D.meds.filter(m => !m.fim || m.fim >= hojeStr());
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <div class="row" style="align-items:end">
+        <div class="field"><label for="pNome">Nome do paciente</label><input id="pNome" value="${esc(D.perfil.nome)}" placeholder="Seu nome completo" autocomplete="name"></div>
+        <div class="field"><label for="pPer">Período do resumo</label><select id="pPer">${[7,30,90].map(n => `<option value="${n}" ${n===ui.periodo?"selected":""}>Últimos ${n} dias</option>`).join("")}</select></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-primary" data-acao="pdf">${icon("pdf")} Gerar resumo em PDF</button>
+        ${cons ? `<span class="tag tag-info" style="align-self:center">Para: ${esc(cons.titulo)}, ${fmtData(cons.data)}</span>` : ""}
+      </div>
+    </div>
+    <div class="stats" style="margin-bottom:16px">
+      <div class="stat"><small>Remédios em uso</small><b>${ativos.length}</b></div>
+      <div class="stat"><small>Doses tomadas</small><b>${tot ? Math.round(tom/tot*100) + "%" : "–"}</b></div>
+      <div class="stat"><small>Registros no diário</small><b>${sint.length}</b></div>
+      <div class="stat"><small>Perguntas em aberto</small><b>${perg.length}</b></div>
+    </div>
+    <div class="stack">
+      <section class="card"><h2>Remédios e horários</h2>
+        ${ativos.length ? `<div class="table-wrap"><table><thead><tr><th>Remédio</th><th>Dose</th><th>Horários</th><th>Frequência</th></tr></thead><tbody>
+          ${ativos.map(m => `<tr><td><b>${esc(m.nome)}</b>${m.obs ? `<br><span class="muted">${esc(m.obs)}</span>` : ""}</td><td>${doseTxt(m)}</td><td>${m.horarios.join(", ") || "Sem horário fixo"}</td><td>${freqTxt(m)}</td></tr>`).join("")}
+        </tbody></table></div>` : `<p class="muted">Nenhum remédio cadastrado.</p>`}
+      </section>
+      <section class="card"><h2>Como os remédios foram tomados</h2>
+        ${ad.lista.length ? `<div class="table-wrap"><table><thead><tr><th>Remédio</th><th>Tomadas</th><th>Não tomadas</th><th>Sem registro</th><th>Adesão</th></tr></thead><tbody>
+          ${ad.lista.map(p => { const pc = Math.round(p.tomadas/p.total*100); return `<tr><td>${esc(p.m.nome)}</td><td>${p.tomadas}</td><td>${p.nao}</td><td>${p.sem}</td><td><div style="display:flex;align-items:center;gap:8px"><div class="bar"><i style="width:${pc}%"></i></div>${pc}%</div></td></tr>`; }).join("")}
+        </tbody></table></div>
+        ${Object.keys(ad.motivos).length ? `<p style="margin:12px 0 0"><b>Motivos informados para doses não tomadas:</b> ${Object.entries(ad.motivos).map(([k,v]) => `${esc(k.toLowerCase())} (${v})`).join(", ")}.</p>` : ""}
+        ${ad.avulsas ? `<p class="muted" style="margin:6px 0 0">Doses avulsas de remédios de uso quando necessário: ${ad.avulsas}.</p>` : ""}`
+        : `<p class="muted">Ainda não há doses no período escolhido.</p>`}
+      </section>
+      <section class="card"><h2>Sintomas e acontecimentos</h2>
+        ${sint.length ? `<div class="entries">${sint.map(entradaHTML).join("")}</div>` : `<p class="muted">Nenhum registro no diário neste período.</p>`}
+      </section>
+      <section class="card"><h2>Perguntas para o médico</h2>
+        ${perg.length ? `<ol style="margin:0;padding-left:20px;display:grid;gap:6px">${perg.map(p => `<li>${esc(p.texto)}</li>`).join("")}</ol>` : `<p class="muted">Nenhuma pergunta em aberto.</p>`}
+      </section>
+      <div class="notice">${icon("info")}<span>O resumo apoia a conversa com o profissional de saúde. Ele não substitui a avaliação médica nem faz diagnósticos.</span></div>
+      <section class="card"><h2>Seus dados</h2>
+        <p class="muted" style="margin:-4px 0 12px;font-size:.9rem">Tudo fica guardado apenas neste aparelho. Faça uma cópia de segurança para trocar de celular sem perder o histórico.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" data-acao="backup">${icon("download")} Exportar cópia (JSON)</button>
+          <label class="btn" style="cursor:pointer">${icon("upload")} Importar cópia<input type="file" id="imp" accept="application/json,.json" class="sr-only"></label>
+          <button class="btn" data-acao="exemplo">${icon("spark")} Carregar exemplo</button>
+          <button class="btn btn-ghost btn-danger" data-acao="apagar-tudo">${icon("trash")} Apagar tudo</button>
+        </div>
+      </section>
+    </div>`;
+  c.querySelector("#pNome").onchange = e => { D.perfil.nome = e.target.value.trim(); salvar(); };
+  c.querySelector("#pPer").onchange = e => { ui.periodo = +e.target.value; render(); };
+  c.querySelector("#imp").onchange = importar;
+}
+function addCheck(){ const i = document.getElementById("novoItem"); const t = i.value.trim(); if (!t) return i.focus(); D.checklist.push({id:uid(), texto:t, ok:false}); salvar(); render(); document.getElementById("novoItem")?.focus(); }
+function addPergunta(){ const i = document.getElementById("novaPerg"); const t = i.value.trim(); if (!t) return i.focus(); D.perguntas.push({id:uid(), texto:t, respondida:false, criada:hojeStr()}); salvar(); render(); document.getElementById("novaPerg")?.focus(); toast("Pergunta guardada."); }
+
+/* ---------- Arquivos: PDF e cópia de segurança ---------- */
+let downloadsNS = null;
+if (window.claude && typeof window.claude.use === "function"){
+  window.claude.use("downloads").then(d => { downloadsNS = d; }).catch(() => {});
+}
+async function salvarArquivo(nome, blob){
+  if (downloadsNS){
+    try{ await downloadsNS.save({filename:nome, data:blob}); toast("Arquivo salvo."); }
+    catch(e){ toast(e && e.code === "declined" ? "Download cancelado." : "Não foi possível salvar o arquivo nesta tela.", "info"); }
+    return;
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+function gerarPDF(){
+  if (!window.jspdf){ toast("O gerador de PDF precisa de internet na primeira vez. Tente novamente conectado.","info"); return; }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:"mm", format:"a4"});
+  const L = 16, W = 178, ROXO = [82,73,216], TINTA = [28,27,58], CINZA = [94,95,128];
+  let y = 0;
+  const quebra = h => { if (y + h > 282){ doc.addPage(); y = 18; } };
+  const texto = (t, {size=10, bold=false, cor=TINTA, depois=1.5, x=L, w=W}={}) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size); doc.setTextColor(...cor);
+    doc.splitTextToSize(String(t), w).forEach(l => { quebra(size*.45); doc.text(l, x, y); y += size*.45; });
+    y += depois;
+  };
+  const secao = t => { y += 4; quebra(14); texto(t, {size:13, bold:true, cor:ROXO, depois:1}); doc.setDrawColor(224,224,238); doc.line(L, y, L+W, y); y += 5; };
+
+  doc.setFillColor(...ROXO); doc.rect(0, 0, 210, 30, "F");
+  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(18); doc.text("MedCare", L, 14);
+  doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.text("Resumo de saúde para a consulta", L, 22);
+  doc.setFontSize(9); doc.text(`Gerado em ${fmtData(hojeStr())} às ${horaAgora()}`, 194, 22, {align:"right"});
+  y = 40;
+  const ad = adesao(ui.periodo);
+  texto(`Paciente: ${D.perfil.nome || "não informado"}`, {size:11, bold:true});
+  texto(`Período analisado: ${fmtData(ad.ini)} a ${fmtData(hojeStr())} (${ui.periodo} dias)`, {cor:CINZA});
+  const cons = D.consultas.find(c => c.id === ui.consultaPrep);
+  if (cons) texto(`Consulta: ${cons.tipo} - ${cons.titulo}${cons.profissional ? ", " + cons.profissional : ""}, ${fmtData(cons.data)} às ${cons.hora}${cons.local ? ", " + cons.local : ""}`, {cor:CINZA});
+
+  secao("Remédios em uso");
+  const ativos = D.meds.filter(m => !m.fim || m.fim >= hojeStr());
+  if (!ativos.length) texto("Nenhum remédio cadastrado.", {cor:CINZA});
+  ativos.forEach(m => {
+    texto(m.nome, {bold:true, depois:.5});
+    texto(`${doseTxt(m)}. Horários: ${m.horarios.join(", ") || "sem horário fixo"}. ${freqTxt(m)}${m.inicio ? `, desde ${fmtData(m.inicio)}` : ""}${m.fim ? ` até ${fmtData(m.fim)}` : ""}.${m.obs ? " Obs.: " + m.obs : ""}`, {cor:CINZA, depois:3});
+  });
+
+  secao("Como os remédios foram tomados");
+  if (!ad.lista.length) texto("Sem doses programadas no período.", {cor:CINZA});
+  else {
+    const cols = [L, L+70, L+100, L+130, L+160];
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...CINZA);
+    ["Remédio","Tomadas","Não tomadas","Sem registro","Adesão"].forEach((h,i) => doc.text(h, cols[i], y)); y += 5;
+    doc.setFont("helvetica","normal"); doc.setTextColor(...TINTA); doc.setFontSize(10);
+    ad.lista.forEach(p => { quebra(6); [p.m.nome, p.tomadas, p.nao, p.sem, Math.round(p.tomadas/p.total*100) + "%"].forEach((v,i) => doc.text(String(v), cols[i], y)); y += 6; });
+    if (Object.keys(ad.motivos).length) { y += 1; texto("Motivos informados: " + Object.entries(ad.motivos).map(([k,v]) => `${k.toLowerCase()} (${v})`).join(", ") + ".", {cor:CINZA}); }
+    if (ad.avulsas) texto(`Doses avulsas (uso quando necessário): ${ad.avulsas}.`, {cor:CINZA});
+  }
+
+  secao("Sintomas e acontecimentos");
+  const sint = D.diario.filter(e => e.data >= ad.ini).sort((a,b) => b.data.localeCompare(a.data));
+  if (!sint.length) texto("Nenhum registro no período.", {cor:CINZA});
+  sint.forEach(e => {
+    const m = e.medId ? medPorId(e.medId) : null;
+    texto(`${fmtData(e.data)}  ${e.titulo} (${e.tipo.toLowerCase()}, intensidade ${INTENS[e.intensidade].toLowerCase()})`, {bold:true, depois:.5});
+    const det = [e.inicio && `começou em ${fmtData(e.inicio)}`, e.frequencia && `frequência: ${e.frequencia.toLowerCase()}`, e.duracao && `duração: ${e.duracao}`, m && `relacionado a ${m.nome}`].filter(Boolean).join("; ");
+    if (det) texto(det.charAt(0).toUpperCase() + det.slice(1) + ".", {cor:CINZA, depois:.5});
+    if (e.obs) texto(e.obs, {cor:CINZA, depois:.5});
+    y += 2.5;
+  });
+
+  secao("Perguntas para o médico");
+  const perg = D.perguntas.filter(p => !p.respondida);
+  if (!perg.length) texto("Nenhuma pergunta em aberto.", {cor:CINZA});
+  perg.forEach((p,i) => texto(`${i+1}. ${p.texto}`, {depois:2}));
+
+  y += 6; quebra(14);
+  texto("Documento preenchido pelo paciente no aplicativo MedCare para apoiar a comunicação com o profissional de saúde. Não substitui a avaliação médica nem estabelece diagnósticos.", {size:8.5, cor:CINZA});
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(...CINZA); doc.text(`Página ${i} de ${n}`, 194, 290, {align:"right"}); }
+  salvarArquivo(`medcare-resumo-${hojeStr()}.pdf`, doc.output("blob"));
+}
+function exportar(){
+  salvarArquivo(`medcare-copia-${hojeStr()}.json`, new Blob([JSON.stringify({app:"MedCare", versao:1, exportadoEm:new Date().toISOString(), dados:D}, null, 2)], {type:"application/json"}));
+}
+function importar(e){
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const j = JSON.parse(r.result); const dados = j.dados || j;
+      if (!Array.isArray(dados.meds) || typeof dados.registros !== "object") throw 0;
+      confirmar("Importar cópia?", "Os dados atuais deste aparelho serão substituídos pelos dados do arquivo.", "Importar", () => { D = Object.assign(vazio(), dados); salvar(); render(); toast("Cópia importada."); });
+    }catch(_){ toast("Este arquivo não é uma cópia válida do MedCare.","x"); }
+  };
+  r.readAsText(file); e.target.value = "";
+}
+
+/* ---------- Dados de exemplo para demonstração ---------- */
+function carregarExemplo(){
+  const hoje = hojeStr(), ini = addDias(hoje, -20);
+  const meds = [
+    {id:uid(), nome:"Losartana", dose:50, unidade:"mg", qtd:1, forma:"comprimido", freq:"diario", dias:[], horarios:["08:00","20:00"], inicio:ini, fim:"", cor:CORES[0], obs:"Tomar com água"},
+    {id:uid(), nome:"Metformina", dose:850, unidade:"mg", qtd:1, forma:"comprimido", freq:"diario", dias:[], horarios:["07:30","19:30"], inicio:ini, fim:"", cor:CORES[1], obs:"Tomar após as refeições"},
+    {id:uid(), nome:"Vitamina D", dose:7000, unidade:"UI", qtd:1, forma:"capsula", freq:"dias", dias:[0], horarios:["12:00"], inicio:ini, fim:"", cor:CORES[5], obs:""},
+    {id:uid(), nome:"Dipirona", dose:500, unidade:"mg", qtd:1, forma:"comprimido", freq:"sos", dias:[], horarios:[], inicio:ini, fim:"", cor:CORES[3], obs:"Se dor ou febre, conforme receita"}
+  ];
+  const regs = {};
+  let semente = 7; const rnd = () => (semente = (semente * 9301 + 49297) % 233280) / 233280;
+  for (let i = 14; i >= 0; i--){
+    const dia = addDias(hoje, -i);
+    meds.filter(m => m.freq !== "sos").forEach(m => m.horarios.forEach(h => {
+      if (!(m.freq === "diario" || m.dias.includes(parseYmd(dia).getDay()))) return;
+      if (i === 0 && toMin(h) > agoraMin() - 30) return;
+      const r = rnd();
+      if (r < .82) regs[`${m.id}|${dia}|${h}`] = {status:"tomada", hora:h.slice(0,3) + pad(Math.min(59, +h.slice(3) + Math.floor(rnd()*15))), em:dia};
+      else if (r < .93) regs[`${m.id}|${dia}|${h}`] = {status:"nao", hora:h, em:dia, motivo: r < .88 ? "Esqueci" : "Senti um efeito indesejado"};
+    }));
+  }
+  regs[`${meds[3].id}|${addDias(hoje,-3)}|sos-14:10`] = {status:"tomada", hora:"14:10", em:addDias(hoje,-3), sos:true};
+  D = {
+    meds, registros:regs,
+    consultas:[
+      {id:uid(), tipo:"Consulta", titulo:"Clínico geral", profissional:"Dr. Ricardo Alves", data:addDias(hoje,5), hora:"08:30", local:"Centro Médico Vida", lembrete:1440, obs:"Levar exames anteriores e a lista de remédios em uso."},
+      {id:uid(), tipo:"Exame", titulo:"Exame de sangue (glicemia e hemoglobina glicada)", profissional:"", data:addDias(hoje,2), hora:"07:00", local:"Laboratório da UBS", lembrete:1440, obs:"Jejum de 8 horas."},
+      {id:uid(), tipo:"Consulta", titulo:"Oftalmologia", profissional:"Dr. Henrique Costa", data:addDias(hoje,19), hora:"10:00", local:"Centro Oftalmológico", lembrete:2880, obs:""}
+    ],
+    diario:[
+      {id:uid(), tipo:"Sintoma", titulo:"Dor de cabeça", intensidade:2, inicio:addDias(hoje,-3), frequencia:"Algumas vezes", duracao:"cerca de 2 horas", medId:"", obs:"Piora no fim da tarde.", data:addDias(hoje,-3), criado:"18:20"},
+      {id:uid(), tipo:"Efeito indesejado", titulo:"Enjoo depois do café da manhã", intensidade:1, inicio:addDias(hoje,-8), frequencia:"Todos os dias", duracao:"30 minutos", medId:meds[1].id, obs:"Melhora quando tomo depois de comer bem.", data:addDias(hoje,-6), criado:"09:10"},
+      {id:uid(), tipo:"Sintoma", titulo:"Tontura ao levantar", intensidade:2, inicio:addDias(hoje,-10), frequencia:"Algumas vezes", duracao:"alguns segundos", medId:"", obs:"", data:addDias(hoje,-9), criado:"07:45"},
+      {id:uid(), tipo:"Dificuldade com o tratamento", titulo:"Esqueci a dose da noite no fim de semana", intensidade:1, inicio:addDias(hoje,-5), frequencia:"Uma vez", duracao:"", medId:meds[0].id, obs:"Estava fora de casa.", data:addDias(hoje,-5), criado:"22:00"}
+    ],
+    perguntas:[
+      {id:uid(), texto:"Posso continuar com o mesmo remédio?", respondida:false, criada:hoje},
+      {id:uid(), texto:"O enjoo pode ser efeito da metformina?", respondida:false, criada:hoje},
+      {id:uid(), texto:"Quais são os possíveis efeitos colaterais da losartana?", respondida:false, criada:hoje}
+    ],
+    checklist: CHECKLIST_PADRAO.map((t,i) => ({id:uid(), texto:t, ok:i===0})),
+    perfil:{nome:"Maria Aparecida Silva"}
+  };
+  salvar(); render(); toast("Dados de exemplo carregados.","spark");
+}
+
+/* =========================================================
+   L. AÇÕES (delegação de eventos)
+   ========================================================= */
+document.getElementById("app").addEventListener("click", e => {
+  const b = e.target.closest("[data-acao]"); if (!b) return;
+  const {acao, k, id, v} = b.dataset;
+  const A = {
+    "tomar": () => { registrar(k, "tomada"); toast("Dose registrada como tomada."); },
+    "naotomar": () => perguntarMotivo(k),
+    "desfazer": () => { delete D.registros[k]; salvar(); render(); toast("Registro desfeito.","undo"); },
+    "sos": () => { const h = horaAgora(); D.registros[`${id}|${hojeStr()}|sos-${h}:${pad(new Date().getSeconds())}`] = {status:"tomada", hora:h, em:new Date().toISOString(), sos:true}; salvar(); render(); toast("Dose avulsa registrada."); },
+    "novo-remedio": () => formRemedio(),
+    "editar-remedio": () => formRemedio(medPorId(id)),
+    "excluir-remedio": () => { const m = medPorId(id); confirmar("Excluir remédio?", `${esc(m.nome)} e os lembretes dele serão removidos. O histórico de doses é apagado junto.`, "Excluir", () => {
+        D.meds = D.meds.filter(x => x.id !== id); Object.keys(D.registros).forEach(k2 => k2.startsWith(id + "|") && delete D.registros[k2]); salvar(); render(); toast("Remédio excluído.","trash"); }); },
+    "rem-aba": () => { ui.remAba = v; render(); },
+    "nova-consulta": () => formConsulta(null, b.dataset.d),
+    "ver-consulta": () => verConsulta(id),
+    "preparar": () => { ui.consultaPrep = id; ui.resAba = "preparar"; location.hash = "#resumo"; },
+    "mes": () => { ui.mes = new Date(ui.mes.getFullYear(), ui.mes.getMonth() + +b.dataset.n, 1); render(); },
+    "dia": () => { ui.diaSel = b.dataset.d; render(); },
+    "dia-aba": () => { ui.diaAba = v; render(); },
+    "filtro-diario": () => { ui.filtroDiario = v; render(); },
+    "excluir-diario": () => confirmar("Excluir registro?", "Este registro sairá do diário e do resumo.", "Excluir", () => { D.diario = D.diario.filter(x => x.id !== id); salvar(); render(); toast("Registro excluído.","trash"); }),
+    "novo-sintoma": () => abrirSheet(cabSheet("Como você está se sentindo?") + formDiarioHTML(), r => montarFormDiario(r, () => { fecharSheet(); render(); })),
+    "nova-pergunta": () => { ui.resAba = "preparar"; location.hash = "#resumo"; setTimeout(() => document.getElementById("novaPerg")?.focus(), 60); },
+    "res-aba": () => { ui.resAba = v; render(); window.scrollTo(0,0); },
+    "check": () => { const i = D.checklist.find(x => x.id === id); i.ok = b.checked; salvar(); render(); },
+    "rm-check": () => { D.checklist = D.checklist.filter(x => x.id !== id); salvar(); render(); },
+    "add-check": addCheck,
+    "limpar-check": () => { D.checklist.forEach(x => x.ok = false); salvar(); render(); },
+    "responder": () => { const p = D.perguntas.find(x => x.id === id); p.respondida = b.checked; salvar(); render(); },
+    "rm-pergunta": () => { D.perguntas = D.perguntas.filter(x => x.id !== id); salvar(); render(); },
+    "add-pergunta": addPergunta,
+    "pdf": gerarPDF,
+    "backup": exportar,
+    "exemplo": () => (D.meds.length || D.consultas.length || D.diario.length)
+      ? confirmar("Carregar dados de exemplo?", "Os dados atuais deste aparelho serão substituídos por uma paciente fictícia. Exporte uma cópia antes, se quiser guardar.", "Carregar exemplo", carregarExemplo)
+      : carregarExemplo(),
+    "apagar-tudo": () => confirmar("Apagar todos os dados?", "Remédios, histórico, agenda, diário e perguntas serão removidos deste aparelho. Essa ação não pode ser desfeita.", "Apagar tudo", () => { D = vazio(); salvar(); render(); toast("Todos os dados foram apagados.","trash"); })
+  };
+  A[acao] && A[acao]();
+});
+
+/* =========================================================
+   M. ALARMES DE DOSES E LEMBRETES DE CONSULTA
+   Funcionam enquanto o app estiver aberto. No app instalado
+   (PWA ou nativo), as notificações agendadas assumem esse papel.
+   ========================================================= */
+const alarm = document.getElementById("alarm"), alarmBody = document.getElementById("alarmBody");
+const alertados = new Set(), adiados = {};
+function mostrarAlarme(d){
+  alarmBody.innerHTML = `<div class="ring">${icon("capsule")}</div>
+    <h2 id="alarmTitle">Hora do seu remédio</h2>
+    <div class="hero-time">${d.hora}</div>
+    <div class="med-line"><i class="pill" style="--pill:${d.m.cor}"></i><span><b>${esc(d.m.nome)}</b><br><span class="muted">${doseTxt(d.m)}</span></span></div>
+    ${d.m.obs ? `<p class="muted" style="margin:10px 0 0">${esc(d.m.obs)}</p>` : ""}
+    <div class="sheet-foot">
+      <button class="btn btn-ok" id="aTomei">${icon("check")} Tomei</button>
+      <button class="btn" id="aNao">Não tomei</button>
+      <button class="btn btn-ghost" id="aAdiar">Lembrar em 10 min</button>
+    </div>`;
+  alarm.showModal();
+  alarmBody.querySelector("#aTomei").onclick = () => { alarm.close(); registrar(d.chave, "tomada"); toast("Dose registrada como tomada."); };
+  alarmBody.querySelector("#aNao").onclick = () => { alarm.close(); perguntarMotivo(d.chave); };
+  alarmBody.querySelector("#aAdiar").onclick = () => { alarm.close(); adiados[d.chave] = Date.now() + 10*60000; toast("Vou lembrar de novo em 10 minutos.","clock"); };
+  notificar("Hora do seu remédio", `${d.m.nome} ${doseTxt(d.m)} às ${d.hora}`);
+  bip();
+}
+function verificar(){
+  if (alarm.open || sheet.open) return;
+  const dia = hojeStr(), agora = agoraMin();
+  for (const d of dosesDoDia(dia)){
+    if (d.reg) continue;
+    const dif = agora - toMin(d.hora);
+    if (dif < 0 || dif > 30) continue;
+    if (adiados[d.chave]){ if (Date.now() < adiados[d.chave]) continue; delete adiados[d.chave]; mostrarAlarme(d); return; }
+    if (alertados.has(d.chave)) continue;
+    alertados.add(d.chave); mostrarAlarme(d); return;
+  }
+  const avisados = pref.get("mc:avisos", []);
+  for (const c of D.consultas){
+    if (!+c.lembrete) continue;
+    const ini = new Date(`${c.data}T${c.hora}`).getTime(), chave = `${c.id}@${c.data}${c.hora}${c.lembrete}`;
+    if (Date.now() >= ini - c.lembrete*60000 && Date.now() < ini && !avisados.includes(chave)){
+      avisados.push(chave); pref.set("mc:avisos", avisados.slice(-50));
+      const txt = `${c.tipo}: ${c.titulo}, ${c.data === dia ? "hoje" : fmtCurta(c.data)} às ${c.hora}`;
+      toast("Lembrete. " + txt, "cal"); notificar("Lembrete de compromisso", txt);
+    }
+  }
+}
+let ultimoMin = agoraMin();
+setInterval(() => {
+  verificar();
+  if (agoraMin() !== ultimoMin){ ultimoMin = agoraMin(); if (rotaAtual === "hoje" && !sheet.open && !alarm.open) render(); }
+}, 15000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ verificar(); if (rotaAtual === "hoje") render(); } });
+
+/* =========================================================
+   N. INICIALIZAÇÃO
+   ========================================================= */
+aplicarTema(); desenharNotif(); rota();
+setTimeout(verificar, 1500);
+</script>
+</body>
+</html>
